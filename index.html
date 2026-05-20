@@ -212,6 +212,20 @@
       border-color: #fecaca;
     }
 
+    .toolbar-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .import-input {
+      position: absolute;
+      width: 0;
+      height: 0;
+      opacity: 0;
+      pointer-events: none;
+    }
+
     .card {
       background: var(--surface);
       border-radius: var(--radius);
@@ -503,7 +517,7 @@
   <div class="app">
     <header>
       <h1>水费计费单</h1>
-      <p>按 年 → 月 → 日 分层管理，数据自动保存在本地浏览器</p>
+      <p>按 年 → 月 → 日 分层管理，数据自动保存在本地浏览器，可导出备份或导入历史数据</p>
     </header>
 
     <div class="toolbar">
@@ -523,7 +537,12 @@
         <input type="number" id="globalUnitPrice" min="0" step="0.01" value="38">
         <span class="unit">元/小时</span>
       </div>
-      <button type="button" class="btn btn-primary" id="btnAdd">+ 新增记录</button>
+      <div class="toolbar-actions">
+        <button type="button" class="btn btn-ghost" id="btnExport" title="导出为 JSON 备份文件">导出</button>
+        <button type="button" class="btn btn-ghost" id="btnImport" title="从 JSON 备份文件导入">导入</button>
+        <input type="file" class="import-input" id="importFile" accept=".json,application/json">
+        <button type="button" class="btn btn-primary" id="btnAdd">+ 新增记录</button>
+      </div>
     </div>
 
     <p class="search-hint" id="searchHint"></p>
@@ -577,22 +596,49 @@
 
   <script>
     const STORAGE_KEY = 'water_bill_data_v1';
+    const EXPORT_VERSION = 1;
 
     let state = loadState();
+
+    function normalizeState(data) {
+      if (!data || typeof data !== 'object') return null;
+      const records = Array.isArray(data.records) ? data.records : [];
+      const normalized = {
+        globalUnitPrice: typeof data.globalUnitPrice === 'number' ? data.globalUnitPrice : 38,
+        records: records.map(r => {
+          if (!r || typeof r !== 'object') return null;
+          let unitPrice = Number(r.unitPrice);
+          if (!Number.isFinite(unitPrice) || unitPrice < 0) unitPrice = 38;
+          // 旧版按元/分存储，转换为元/小时（保持历史金额不变）
+          if (unitPrice > 0 && unitPrice <= 2) unitPrice = unitPrice * 60;
+          const date = typeof r.date === 'string' ? r.date : '';
+          const name = typeof r.name === 'string' ? r.name.trim() : '';
+          const startTime = typeof r.startTime === 'string' ? r.startTime : '';
+          const endTime = typeof r.endTime === 'string' ? r.endTime : '';
+          if (!date || !name || !startTime || !endTime) return null;
+          if (!isValidDate(...date.split('-').map(Number))) return null;
+          if (calcMinutes(startTime, endTime) <= 0) return null;
+          return {
+            id: typeof r.id === 'string' && r.id ? r.id : uid(),
+            date,
+            name,
+            startTime,
+            endTime,
+            unitPrice,
+            paid: r.paid === true
+          };
+        }).filter(Boolean)
+      };
+      if (normalized.globalUnitPrice === 0.5) normalized.globalUnitPrice = 38;
+      return normalized;
+    }
 
     function loadState() {
       try {
         const raw = localStorage.getItem(STORAGE_KEY);
         if (raw) {
-          const data = JSON.parse(raw);
-          data.records = (data.records || []).map(r => {
-            let unitPrice = r.unitPrice;
-            // 旧版按元/分存储，转换为元/小时（保持历史金额不变）
-            if (unitPrice > 0 && unitPrice <= 2) unitPrice = unitPrice * 60;
-            return { ...r, paid: r.paid === true, unitPrice };
-          });
-          if (data.globalUnitPrice === 0.5) data.globalUnitPrice = 38;
-          return data;
+          const data = normalizeState(JSON.parse(raw));
+          if (data) return data;
         }
       } catch (_) {}
       return { globalUnitPrice: 38, records: [] };
@@ -600,6 +646,90 @@
 
     function saveState() {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    }
+
+    function exportData() {
+      const payload = {
+        version: EXPORT_VERSION,
+        exportedAt: new Date().toISOString(),
+        app: '水费计费单',
+        globalUnitPrice: state.globalUnitPrice,
+        records: state.records
+      };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const date = new Date().toISOString().slice(0, 10);
+      a.href = url;
+      a.download = `水费计费单_${date}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function mergeRecords(existing, incoming) {
+      const byId = new Map(existing.map(r => [r.id, r]));
+      for (const r of incoming) {
+        byId.set(r.id, r);
+      }
+      return Array.from(byId.values());
+    }
+
+    function applyImportedState(imported, mode) {
+      if (mode === 'replace') {
+        state = imported;
+      } else {
+        state = {
+          globalUnitPrice: imported.globalUnitPrice,
+          records: mergeRecords(state.records, imported.records)
+        };
+      }
+      saveState();
+      globalInput.value = state.globalUnitPrice;
+      document.getElementById('previewPrice').textContent = state.globalUnitPrice;
+      render();
+    }
+
+    function importDataFile(file) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const raw = JSON.parse(reader.result);
+          const imported = normalizeState(raw);
+          if (!imported) {
+            alert('无法识别备份文件格式，请选择本应用导出的 JSON 文件');
+            return;
+          }
+          if (imported.records.length === 0 && state.records.length > 0) {
+            const ok = confirm('导入文件中没有有效记录，是否仍用其全局单价覆盖当前设置？');
+            if (!ok) return;
+            state.globalUnitPrice = imported.globalUnitPrice;
+            saveState();
+            globalInput.value = state.globalUnitPrice;
+            document.getElementById('previewPrice').textContent = state.globalUnitPrice;
+            render();
+            return;
+          }
+          let mode = 'merge';
+          if (state.records.length > 0) {
+            const choice = confirm(
+              `将导入 ${imported.records.length} 条记录。\n\n确定 = 合并到现有数据（相同 ID 会覆盖）\n取消 = 放弃导入`
+            );
+            if (!choice) return;
+            const replace = confirm('是否改为「完全替换」当前全部数据？\n\n确定 = 替换\n取消 = 合并');
+            if (replace) mode = 'replace';
+          }
+          applyImportedState(imported, mode);
+          alert(`导入完成：${imported.records.length} 条记录已${mode === 'replace' ? '替换' : '合并'}到本地`);
+        } catch (_) {
+          alert('文件解析失败，请确认是有效的 JSON 备份文件');
+        }
+        document.getElementById('importFile').value = '';
+      };
+      reader.onerror = () => {
+        alert('无法读取文件');
+        document.getElementById('importFile').value = '';
+      };
+      reader.readAsText(file, 'UTF-8');
     }
 
     function uid() {
@@ -1008,6 +1138,17 @@
     // 新增面板
     const addPanel = document.getElementById('addPanel');
     const addForm = document.getElementById('addForm');
+
+    document.getElementById('btnExport').addEventListener('click', exportData);
+
+    document.getElementById('btnImport').addEventListener('click', () => {
+      document.getElementById('importFile').click();
+    });
+
+    document.getElementById('importFile').addEventListener('change', (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (file) importDataFile(file);
+    });
 
     document.getElementById('btnAdd').addEventListener('click', () => {
       addPanel.classList.add('open');

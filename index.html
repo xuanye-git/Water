@@ -1,0 +1,1064 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>水费计费单</title>
+  <style>
+    :root {
+      --bg: #f4f6f9;
+      --surface: #ffffff;
+      --border: #e2e8f0;
+      --text: #1e293b;
+      --text-muted: #64748b;
+      --primary: #0ea5e9;
+      --primary-dark: #0284c7;
+      --accent: #06b6d4;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --radius: 10px;
+      --shadow: 0 1px 3px rgba(15, 23, 42, 0.08), 0 4px 12px rgba(15, 23, 42, 0.04);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      min-height: 100vh;
+    }
+
+    .app {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 24px 20px 48px;
+    }
+
+    header {
+      margin-bottom: 24px;
+    }
+
+    header h1 {
+      font-size: 1.5rem;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    header h1::before {
+      content: "";
+      width: 4px;
+      height: 22px;
+      background: linear-gradient(180deg, var(--primary), var(--accent));
+      border-radius: 2px;
+    }
+
+    header p {
+      color: var(--text-muted);
+      font-size: 0.875rem;
+      margin-top: 4px;
+      margin-left: 14px;
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 20px;
+      align-items: stretch;
+    }
+
+    .search-box {
+      flex: 1;
+      min-width: 200px;
+      position: relative;
+    }
+
+    .search-box input {
+      width: 100%;
+      padding: 10px 14px 10px 38px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      font-size: 0.9rem;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .search-box input:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.15);
+    }
+
+    .search-box::before {
+      content: "⌕";
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-muted);
+      font-size: 1.1rem;
+    }
+
+    .global-price {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 8px 14px;
+      box-shadow: var(--shadow);
+    }
+
+    .global-price label {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      white-space: nowrap;
+    }
+
+    .global-price input {
+      width: 72px;
+      padding: 4px 8px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 0.9rem;
+      text-align: right;
+    }
+
+    .global-price span.unit {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .filter-paid {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 8px 14px;
+      box-shadow: var(--shadow);
+    }
+
+    .filter-paid label {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      white-space: nowrap;
+    }
+
+    .filter-paid select {
+      padding: 4px 8px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 0.9rem;
+      background: var(--surface);
+      color: var(--text);
+      cursor: pointer;
+      min-width: 72px;
+    }
+
+    .filter-paid select:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+
+    .btn {
+      padding: 10px 18px;
+      border: none;
+      border-radius: var(--radius);
+      font-size: 0.875rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+    }
+
+    .btn:active { transform: scale(0.98); }
+
+    .btn-primary {
+      background: var(--primary);
+      color: white;
+    }
+
+    .btn-primary:hover { background: var(--primary-dark); }
+
+    .btn-ghost {
+      background: var(--surface);
+      color: var(--text-muted);
+      border: 1px solid var(--border);
+    }
+
+    .btn-ghost:hover { background: var(--bg); color: var(--text); }
+
+    .btn-sm {
+      padding: 4px 10px;
+      font-size: 0.75rem;
+    }
+
+    .btn-danger {
+      background: transparent;
+      color: var(--danger);
+      border: 1px solid transparent;
+    }
+
+    .btn-danger:hover {
+      background: #fef2f2;
+      border-color: #fecaca;
+    }
+
+    .card {
+      background: var(--surface);
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      margin-bottom: 12px;
+      overflow: hidden;
+    }
+
+    .panel-form {
+      padding: 20px;
+      margin-bottom: 20px;
+      display: none;
+    }
+
+    .panel-form.open { display: block; }
+
+    .panel-form h3 {
+      font-size: 0.95rem;
+      margin-bottom: 16px;
+      font-weight: 600;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 12px;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+
+    .form-group input {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 0.875rem;
+    }
+
+    .form-group input:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+
+    .date-fields {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .date-fields input[type="number"] {
+      width: 100%;
+      padding: 8px 6px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 0.875rem;
+      text-align: center;
+    }
+
+    .date-fields .date-part-year { flex: 1.2; min-width: 72px; }
+    .date-fields .date-part-month,
+    .date-fields .date-part-day { flex: 0.8; min-width: 52px; }
+
+    .date-fields span.unit-label {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      flex-shrink: 0;
+    }
+
+    .date-fields.compact {
+      gap: 3px;
+    }
+
+    .date-fields.compact input[type="number"] {
+      width: 52px;
+      padding: 3px 4px;
+      font-size: 0.78rem;
+      border-radius: 4px;
+    }
+
+    .date-fields.compact .date-part-year { width: 58px; min-width: 58px; flex: none; }
+    .date-fields.compact .date-part-month,
+    .date-fields.compact .date-part-day { width: 40px; min-width: 40px; flex: none; }
+
+    .date-fields.compact span.unit-label {
+      font-size: 0.72rem;
+    }
+
+    .form-actions {
+      margin-top: 16px;
+      display: flex;
+      gap: 8px;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 48px 24px;
+      color: var(--text-muted);
+    }
+
+    .empty-state .icon {
+      font-size: 2.5rem;
+      margin-bottom: 12px;
+      opacity: 0.5;
+    }
+
+    /* 层级折叠 */
+    .level-year > .level-header,
+    .level-month > .level-header,
+    .level-day > .level-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      cursor: pointer;
+      user-select: none;
+      transition: background 0.15s;
+    }
+
+    .level-year > .level-header:hover,
+    .level-month > .level-header:hover,
+    .level-day > .level-header:hover {
+      background: #f8fafc;
+    }
+
+    .level-year > .level-header {
+      font-weight: 600;
+      font-size: 1rem;
+      background: linear-gradient(90deg, #f0f9ff 0%, transparent 100%);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .level-month > .level-header {
+      padding-left: 28px;
+      font-weight: 500;
+      font-size: 0.95rem;
+    }
+
+    .level-day > .level-header {
+      padding-left: 44px;
+      font-size: 0.9rem;
+      color: var(--text-muted);
+    }
+
+    .level-header .meta {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      font-weight: 400;
+    }
+
+    .level-header .chevron {
+      transition: transform 0.2s;
+      color: var(--text-muted);
+      font-size: 0.75rem;
+    }
+
+    .level-header.collapsed .chevron { transform: rotate(-90deg); }
+
+    .level-body {
+      overflow: hidden;
+    }
+
+    .level-body.collapsed { display: none; }
+
+    .level-month { border-top: 1px solid var(--border); }
+    .level-day { border-top: 1px dashed var(--border); }
+
+    /* 记录表格 */
+    .records-table-wrap {
+      padding: 0 16px 12px 60px;
+      overflow-x: auto;
+    }
+
+    table.records {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+    }
+
+    table.records th {
+      text-align: left;
+      padding: 8px 10px;
+      color: var(--text-muted);
+      font-weight: 500;
+      font-size: 0.75rem;
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+
+    table.records td {
+      padding: 10px;
+      border-bottom: 1px solid #f1f5f9;
+      vertical-align: middle;
+    }
+
+    table.records tr:last-child td { border-bottom: none; }
+
+    table.records tr:hover td { background: #fafbfc; }
+
+    table.records tr.highlight td {
+      background: #fffbeb;
+    }
+
+    table.records tr.hidden { display: none; }
+
+    .price-cell input {
+      width: 64px;
+      padding: 3px 6px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      font-size: 0.8rem;
+      text-align: right;
+    }
+
+    .total-cell {
+      font-weight: 600;
+      color: var(--primary-dark);
+    }
+
+    .paid-cell {
+      white-space: nowrap;
+    }
+
+    .paid-options {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .paid-options label {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 0.8rem;
+      cursor: pointer;
+      color: var(--text-muted);
+    }
+
+    .paid-options label:has(input:checked) {
+      color: var(--text);
+      font-weight: 500;
+    }
+
+    .paid-options label.paid-yes:has(input:checked) { color: var(--success); }
+    .paid-options label.paid-no:has(input:checked) { color: var(--warning); }
+
+    .paid-options input[type="radio"] {
+      accent-color: var(--primary);
+      cursor: pointer;
+    }
+
+    .summary-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      padding: 12px 16px;
+      background: #f8fafc;
+      border-top: 1px solid var(--border);
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .summary-bar strong { color: var(--text); }
+
+    .search-hint {
+      font-size: 0.8rem;
+      color: var(--warning);
+      padding: 0 0 12px;
+      display: none;
+    }
+
+    .search-hint.visible { display: block; }
+
+    @media (max-width: 640px) {
+      .records-table-wrap { padding-left: 16px; }
+      table.records { font-size: 0.8rem; }
+      .level-month > .level-header { padding-left: 20px; }
+      .level-day > .level-header { padding-left: 32px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <h1>水费计费单</h1>
+      <p>按 年 → 月 → 日 分层管理，数据自动保存在本地浏览器</p>
+    </header>
+
+    <div class="toolbar">
+      <div class="search-box">
+        <input type="search" id="searchInput" placeholder="搜索姓名…" autocomplete="off">
+      </div>
+      <div class="filter-paid">
+        <label for="paidFilter">缴费状态</label>
+        <select id="paidFilter">
+          <option value="">全部</option>
+          <option value="yes">是</option>
+          <option value="no">否</option>
+        </select>
+      </div>
+      <div class="global-price">
+        <label for="globalUnitPrice">全局单价</label>
+        <input type="number" id="globalUnitPrice" min="0" step="0.01" value="38">
+        <span class="unit">元/小时</span>
+      </div>
+      <button type="button" class="btn btn-primary" id="btnAdd">+ 新增记录</button>
+    </div>
+
+    <p class="search-hint" id="searchHint"></p>
+
+    <div class="card panel-form" id="addPanel">
+      <h3>新增用水记录</h3>
+      <form id="addForm">
+        <div class="form-grid">
+          <div class="form-group" style="grid-column: span 2;">
+            <label>日期</label>
+            <div class="date-fields">
+              <input type="number" class="date-part-year" name="year" min="2000" max="2100" required>
+              <span class="unit-label">年</span>
+              <input type="number" class="date-part-month" name="month" min="1" max="12" required>
+              <span class="unit-label">月</span>
+              <input type="number" class="date-part-day" name="day" min="1" max="31" required>
+              <span class="unit-label">日</span>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>姓名</label>
+            <input type="text" name="name" placeholder="请输入姓名" required>
+          </div>
+          <div class="form-group">
+            <label>接水时间</label>
+            <input type="time" name="startTime" required>
+          </div>
+          <div class="form-group">
+            <label>关水时间</label>
+            <input type="time" name="endTime" required>
+          </div>
+        </div>
+        <p style="font-size:0.75rem;color:var(--text-muted);margin-top:10px;">
+          新增记录将使用当前全局单价（<span id="previewPrice">38</span> 元/小时），之后可单独修改
+        </p>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary">保存</button>
+          <button type="button" class="btn btn-ghost" id="btnCancelAdd">取消</button>
+        </div>
+      </form>
+    </div>
+
+    <div id="billTree"></div>
+
+    <div class="card summary-bar" id="grandSummary" style="display:none;">
+      <span>合计记录：<strong id="totalRecords">0</strong> 条</span>
+      <span>总时长：<strong id="totalMinutes">0</strong> 分钟</span>
+      <span>总金额：<strong id="totalAmount">0.00</strong> 元</span>
+    </div>
+  </div>
+
+  <script>
+    const STORAGE_KEY = 'water_bill_data_v1';
+
+    let state = loadState();
+
+    function loadState() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          const data = JSON.parse(raw);
+          data.records = (data.records || []).map(r => {
+            let unitPrice = r.unitPrice;
+            // 旧版按元/分存储，转换为元/小时（保持历史金额不变）
+            if (unitPrice > 0 && unitPrice <= 2) unitPrice = unitPrice * 60;
+            return { ...r, paid: r.paid === true, unitPrice };
+          });
+          if (data.globalUnitPrice === 0.5) data.globalUnitPrice = 38;
+          return data;
+        }
+      } catch (_) {}
+      return { globalUnitPrice: 38, records: [] };
+    }
+
+    function saveState() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    }
+
+    function uid() {
+      return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+    }
+
+    function parseDateStr(dateStr) {
+      const [y, m, d] = dateStr.split('-').map(Number);
+      return { year: String(y), month: String(m).padStart(2, '0'), day: String(d).padStart(2, '0') };
+    }
+
+    function getTodayParts() {
+      const now = new Date();
+      return { year: now.getFullYear(), month: now.getMonth() + 1, day: now.getDate() };
+    }
+
+    function isValidDate(year, month, day) {
+      const y = Number(year);
+      const m = Number(month);
+      const d = Number(day);
+      if (!y || !m || !d) return false;
+      const date = new Date(y, m - 1, d);
+      return date.getFullYear() === y && date.getMonth() === m - 1 && date.getDate() === d;
+    }
+
+    function buildDateStr(year, month, day) {
+      if (!isValidDate(year, month, day)) return null;
+      const y = Number(year);
+      const m = Number(month);
+      const d = Number(day);
+      return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    }
+
+    function setFormDate(form, dateStr) {
+      let year, month, day;
+      if (dateStr) {
+        const parts = parseDateStr(dateStr);
+        year = parts.year;
+        month = Number(parts.month);
+        day = Number(parts.day);
+      } else {
+        ({ year, month, day } = getTodayParts());
+      }
+      form.querySelector('[name="year"]').value = year;
+      form.querySelector('[name="month"]').value = month;
+      form.querySelector('[name="day"]').value = day;
+    }
+
+    function calcMinutes(start, end) {
+      const [sh, sm] = start.split(':').map(Number);
+      const [eh, em] = end.split(':').map(Number);
+      let startM = sh * 60 + sm;
+      let endM = eh * 60 + em;
+      if (endM <= startM) endM += 24 * 60;
+      return endM - startM;
+    }
+
+    function formatDuration(minutes) {
+      const h = Math.floor(minutes / 60);
+      const m = minutes % 60;
+      if (h === 0) return `${m} 分钟`;
+      if (m === 0) return `${h} 小时`;
+      return `${h} 小时 ${m} 分钟`;
+    }
+
+    function calcTotal(minutes, unitPricePerHour) {
+      return Math.round((minutes / 60) * unitPricePerHour * 100) / 100;
+    }
+
+    function groupRecords(records) {
+      const tree = {};
+      for (const r of records) {
+        const { year, month, day } = parseDateStr(r.date);
+        if (!tree[year]) tree[year] = {};
+        if (!tree[year][month]) tree[year][month] = {};
+        if (!tree[year][month][day]) tree[year][month][day] = [];
+        tree[year][month][day].push(r);
+      }
+      return tree;
+    }
+
+    function sortKeysDesc(obj) {
+      return Object.keys(obj).sort((a, b) => Number(b) - Number(a));
+    }
+
+    function matchesName(record, query) {
+      if (!query) return true;
+      return (record.name || '').toLowerCase().includes(query.toLowerCase());
+    }
+
+    function matchesPaidFilter(record, filter) {
+      if (!filter) return true;
+      const paid = record.paid === true;
+      if (filter === 'yes') return paid;
+      if (filter === 'no') return !paid;
+      return true;
+    }
+
+    function isRecordVisible(record, nameQuery, paidFilter) {
+      return matchesName(record, nameQuery) && matchesPaidFilter(record, paidFilter);
+    }
+
+    function buildFilterDesc(nameQuery, paidFilter) {
+      const parts = [];
+      if (nameQuery) parts.push(`姓名「${nameQuery}」`);
+      if (paidFilter === 'yes') parts.push('已缴费');
+      if (paidFilter === 'no') parts.push('未缴费');
+      return parts.length ? parts.join(' + ') : '';
+    }
+
+    function renderDateCell(record) {
+      const { year, month, day } = parseDateStr(record.date);
+      return `
+        <td class="date-cell">
+          <div class="date-fields compact">
+            <input type="number" class="date-part-year" min="2000" max="2100" value="${year}"
+              data-action="date-part" data-part="year" data-id="${record.id}">
+            <span class="unit-label">年</span>
+            <input type="number" class="date-part-month" min="1" max="12" value="${Number(month)}"
+              data-action="date-part" data-part="month" data-id="${record.id}">
+            <span class="unit-label">月</span>
+            <input type="number" class="date-part-day" min="1" max="31" value="${Number(day)}"
+              data-action="date-part" data-part="day" data-id="${record.id}">
+            <span class="unit-label">日</span>
+          </div>
+        </td>`;
+    }
+
+    function renderPaidCell(record) {
+      const paid = record.paid === true;
+      return `
+        <td class="paid-cell">
+          <div class="paid-options">
+            <label class="paid-yes">
+              <input type="radio" name="paid-${record.id}" value="yes"
+                data-action="paid" data-id="${record.id}" ${paid ? 'checked' : ''}> 是
+            </label>
+            <label class="paid-no">
+              <input type="radio" name="paid-${record.id}" value="no"
+                data-action="paid" data-id="${record.id}" ${!paid ? 'checked' : ''}> 否
+            </label>
+          </div>
+        </td>`;
+    }
+
+    function render() {
+      const tree = groupRecords(state.records);
+      const searchQuery = document.getElementById('searchInput').value.trim();
+      const paidFilter = document.getElementById('paidFilter').value;
+      const hasFilter = !!(searchQuery || paidFilter);
+      const container = document.getElementById('billTree');
+      const years = sortKeysDesc(tree);
+
+      let grandRecords = 0;
+      let grandMinutes = 0;
+      let grandAmount = 0;
+      let searchMatchCount = 0;
+
+      if (years.length === 0) {
+        container.innerHTML = `
+          <div class="card empty-state">
+            <div class="icon">💧</div>
+            <p>暂无计费记录</p>
+            <p style="margin-top:8px;font-size:0.85rem;">点击「新增记录」开始记账</p>
+          </div>`;
+        document.getElementById('grandSummary').style.display = 'none';
+        updateSearchHint(searchQuery, paidFilter, 0);
+        return;
+      }
+
+      let html = '';
+
+      for (const year of years) {
+        const months = sortKeysDesc(tree[year]);
+        let yearRecords = 0, yearMinutes = 0, yearAmount = 0;
+        let yearHtml = '';
+
+        for (const month of months) {
+          const days = sortKeysDesc(tree[year][month]);
+          let monthRecords = 0, monthMinutes = 0, monthAmount = 0;
+          let monthHtml = '';
+
+          for (const day of days) {
+            const dayRecords = tree[year][month][day];
+            let dayCount = 0, dayMinutes = 0, dayAmount = 0;
+            let rows = '';
+
+            for (const r of dayRecords) {
+              const minutes = calcMinutes(r.startTime, r.endTime);
+              const total = calcTotal(minutes, r.unitPrice);
+              const visible = isRecordVisible(r, searchQuery, paidFilter);
+              if (visible) {
+                dayCount++;
+                dayMinutes += minutes;
+                dayAmount += total;
+                if (hasFilter) searchMatchCount++;
+              }
+
+              const highlight = hasFilter && visible;
+              rows += `
+                <tr data-id="${r.id}" class="${visible ? '' : 'hidden'} ${highlight ? 'highlight' : ''}">
+                  ${renderDateCell(r)}
+                  <td>${escapeHtml(r.name)}</td>
+                  <td>${r.startTime}</td>
+                  <td>${r.endTime}</td>
+                  <td>${formatDuration(minutes)}</td>
+                  <td class="price-cell">
+                    <input type="number" min="0" step="0.01" value="${r.unitPrice}"
+                      data-action="price" data-id="${r.id}" title="单独设置单价">
+                    <span style="font-size:0.7rem;color:var(--text-muted);">元/小时</span>
+                  </td>
+                  <td class="total-cell" data-total-for="${r.id}">¥${total.toFixed(2)}</td>
+                  ${renderPaidCell(r)}
+                  <td>
+                    <button type="button" class="btn btn-sm btn-danger" data-action="delete" data-id="${r.id}">删除</button>
+                  </td>
+                </tr>`;
+            }
+
+            const dayVisible = !hasFilter || dayRecords.some(r => isRecordVisible(r, searchQuery, paidFilter));
+            if (!dayVisible) continue;
+
+            monthRecords += dayCount;
+            monthMinutes += dayMinutes;
+            monthAmount += dayAmount;
+
+            monthHtml += `
+              <div class="level-day" data-level="day">
+                <div class="level-header">
+                  <span>${day} 日 <span class="meta">${dayCount} 条 · ${formatDuration(dayMinutes)} · ¥${dayAmount.toFixed(2)}</span></span>
+                  <span class="chevron">▼</span>
+                </div>
+                <div class="level-body">
+                  <div class="records-table-wrap">
+                    <table class="records">
+                      <thead>
+                        <tr>
+                          <th>日期</th>
+                          <th>姓名</th>
+                          <th>接水时间</th>
+                          <th>关水时间</th>
+                          <th>总时长</th>
+                          <th>单价</th>
+                          <th>总计</th>
+                          <th>是否已缴费</th>
+                          <th></th>
+                        </tr>
+                      </thead>
+                      <tbody>${rows}</tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>`;
+          }
+
+          if (!monthHtml) continue;
+
+          yearRecords += monthRecords;
+          yearMinutes += monthMinutes;
+          yearAmount += monthAmount;
+
+          yearHtml += `
+            <div class="level-month" data-level="month">
+              <div class="level-header">
+                <span>${month} 月 <span class="meta">${monthRecords} 条 · ¥${monthAmount.toFixed(2)}</span></span>
+                <span class="chevron">▼</span>
+              </div>
+              <div class="level-body">${monthHtml}</div>
+            </div>`;
+        }
+
+        if (!yearHtml) continue;
+
+        grandRecords += yearRecords;
+        grandMinutes += yearMinutes;
+        grandAmount += yearAmount;
+
+        html += `
+          <div class="card level-year" data-level="year">
+            <div class="level-header">
+              <span>${year} 年 <span class="meta">${yearRecords} 条 · ¥${yearAmount.toFixed(2)}</span></span>
+              <span class="chevron">▼</span>
+            </div>
+            <div class="level-body">${yearHtml}</div>
+          </div>`;
+      }
+
+      container.innerHTML = html || `
+        <div class="card empty-state">
+          <p>未找到匹配 ${escapeHtml(buildFilterDesc(searchQuery, paidFilter))} 的记录</p>
+        </div>`;
+
+      document.getElementById('grandSummary').style.display = 'flex';
+      document.getElementById('totalRecords').textContent = grandRecords;
+      document.getElementById('totalMinutes').textContent = grandMinutes;
+      document.getElementById('totalAmount').textContent = grandAmount.toFixed(2);
+
+      updateSearchHint(searchQuery, paidFilter, searchMatchCount);
+      bindTreeEvents();
+      bindRecordEvents();
+    }
+
+    function updateSearchHint(nameQuery, paidFilter, count) {
+      const hint = document.getElementById('searchHint');
+      if (!nameQuery && !paidFilter) {
+        hint.classList.remove('visible');
+        return;
+      }
+      hint.classList.add('visible');
+      const desc = buildFilterDesc(nameQuery, paidFilter);
+      hint.textContent = count > 0
+        ? `筛选 ${desc}：找到 ${count} 条记录（已高亮显示）`
+        : `筛选 ${desc}：未找到匹配记录`;
+    }
+
+    function escapeHtml(str) {
+      const div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
+    }
+
+    function bindTreeEvents() {
+      document.querySelectorAll('.level-header').forEach(header => {
+        header.addEventListener('click', () => {
+          const body = header.nextElementSibling;
+          header.classList.toggle('collapsed');
+          body.classList.toggle('collapsed');
+        });
+      });
+    }
+
+    function bindRecordEvents() {
+      document.querySelectorAll('[data-action="date-part"]').forEach(input => {
+        input.addEventListener('change', () => {
+          const id = input.dataset.id;
+          const container = input.closest('.date-fields');
+          const year = container.querySelector('[data-part="year"]').value;
+          const month = container.querySelector('[data-part="month"]').value;
+          const day = container.querySelector('[data-part="day"]').value;
+          const dateStr = buildDateStr(year, month, day);
+          if (!dateStr) {
+            alert('请输入有效的日期');
+            render();
+            return;
+          }
+          const record = state.records.find(r => r.id === id);
+          if (!record) return;
+          record.date = dateStr;
+          saveState();
+          render();
+        });
+      });
+
+      document.querySelectorAll('[data-action="price"]').forEach(input => {
+        input.addEventListener('change', () => {
+          const id = input.dataset.id;
+          const record = state.records.find(r => r.id === id);
+          if (!record) return;
+          record.unitPrice = Math.max(0, parseFloat(input.value) || 0);
+          saveState();
+          render();
+        });
+      });
+
+      document.querySelectorAll('[data-action="paid"]').forEach(input => {
+        input.addEventListener('change', () => {
+          const id = input.dataset.id;
+          const record = state.records.find(r => r.id === id);
+          if (!record) return;
+          record.paid = input.value === 'yes';
+          saveState();
+          render();
+        });
+      });
+
+      document.querySelectorAll('[data-action="delete"]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = btn.dataset.id;
+          const record = state.records.find(r => r.id === id);
+          if (!record) return;
+          if (!confirm(`确定删除 ${record.name} 在 ${record.date} 的记录？`)) return;
+          state.records = state.records.filter(r => r.id !== id);
+          saveState();
+          render();
+        });
+      });
+    }
+
+    // 全局单价：只影响新增
+    const globalInput = document.getElementById('globalUnitPrice');
+    globalInput.value = state.globalUnitPrice;
+
+    globalInput.addEventListener('change', () => {
+      state.globalUnitPrice = Math.max(0, parseFloat(globalInput.value) || 0);
+      globalInput.value = state.globalUnitPrice;
+      document.getElementById('previewPrice').textContent = state.globalUnitPrice;
+      saveState();
+    });
+
+    document.getElementById('previewPrice').textContent = state.globalUnitPrice;
+
+    // 搜索与筛选
+    document.getElementById('searchInput').addEventListener('input', render);
+    document.getElementById('paidFilter').addEventListener('change', render);
+
+    // 新增面板
+    const addPanel = document.getElementById('addPanel');
+    const addForm = document.getElementById('addForm');
+
+    document.getElementById('btnAdd').addEventListener('click', () => {
+      addPanel.classList.add('open');
+      setFormDate(addForm);
+    });
+
+    document.getElementById('btnCancelAdd').addEventListener('click', () => {
+      addPanel.classList.remove('open');
+      addForm.reset();
+    });
+
+    addForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const fd = new FormData(addForm);
+      const date = buildDateStr(fd.get('year'), fd.get('month'), fd.get('day'));
+      const name = (fd.get('name') || '').trim();
+      const startTime = fd.get('startTime');
+      const endTime = fd.get('endTime');
+
+      if (!date) {
+        alert('请输入有效的日期');
+        return;
+      }
+
+      if (!name) {
+        alert('请输入姓名');
+        return;
+      }
+
+      if (calcMinutes(startTime, endTime) <= 0) {
+        alert('关水时间必须晚于接水时间');
+        return;
+      }
+
+      state.records.push({
+        id: uid(),
+        date,
+        name,
+        startTime,
+        endTime,
+        unitPrice: state.globalUnitPrice,
+        paid: false
+      });
+
+      saveState();
+      addForm.reset();
+      addPanel.classList.remove('open');
+      render();
+    });
+
+    render();
+  </script>
+</body>
+</html>
